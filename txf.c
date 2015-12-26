@@ -1,4 +1,5 @@
 #include "txf.h"
+#include "txf_draw.h"
 #include <stdio.h>
 
 void XL_WindowRedraw(WINDOW win) {
@@ -28,32 +29,32 @@ void *run(void *v_win) {
     WINDOW win = (WINDOW)v_win;
     pthread_mutex_init(&win->lock, NULL);
     XEvent xe;
+    XNextEvent(win->disp, &xe);
+    if (win->init) {
+        (win->init)(win);
+    }
     while(1){
         pthread_mutex_lock(&win->lock);
-        XNextEvent(win->disp, &xe);
         if (win->event) {
             (win->event)(win, xe);
         }
         XWindowAttributes xwa;
         if(XGetWindowAttributes(win->disp, win->win, &xwa)) {
+            if (win->background) {
+                draw_rectangle(win, 0, 0, xwa.width, xwa.height, 1, win->background);
+            }
             if (win->redraw) {
                 (win->redraw)(win, xwa);
             }
-            if (win->background) {
-                
-            }
         }
+        XNextEvent(win->disp, &xe);
         pthread_mutex_unlock(&win->lock);
     }
     return NULL;
 }
 
-void XL_WindowBackground(WINDOW win, char *color) {
-    win->background = getcolor(win, color);
-}
-
 WINDOW XL_WindowCreate(
-        PAINT(draw), EVENT(ev),
+        WINFN(init), PAINT(draw), EVENT(ev),
         unint X, unint Y, unint W, unint H,
         unlong flags) {
     WINDOW res = calloc(sizeof(_txf_window), 1);
@@ -61,6 +62,7 @@ WINDOW XL_WindowCreate(
     res->H = H;
     res->redraw = draw;
     res->event = ev;
+    res->init = init;
 
     /* create display and get root window */
     res->disp = XOpenDisplay(NULL);

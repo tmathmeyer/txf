@@ -19,4 +19,5 @@ unsigned long alphaset(ulng color, uint8_t alpha);
 unsigned long getcolor(WINDOW win, const char *colstr);
 void draw_rectangle(WINDOW win, XYWH, char fill, ulng color);
 
+void XL_WindowBackground(WINDOW, char *);   
 #endif

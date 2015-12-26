@@ -106,3 +106,7 @@ void draw_rectangle(WINDOW win, XYWH, char fill, ulng color) {
             ,win->gc
             ,X, Y, W, H);
 }
+
+void XL_WindowBackground(WINDOW win, char *color) {
+    win->background = getcolor(win, color);
+}
