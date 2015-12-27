@@ -16,6 +16,6 @@ txf_example txf_example_path:
 
 clean:
 	@echo cleaning
-	@rm -f txf *.o
+	@rm -f txf_example *.o
 
 update: clean txf_example
