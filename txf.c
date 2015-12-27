@@ -12,8 +12,6 @@ void XL_WindowRedraw(WINDOW win) {
             ,win->H);
 }
 
-
-
 void XL_WindowResize(WINDOW win) {
     if(win->canvas) {
         XFreePixmap(win->disp, win->canvas);
@@ -41,7 +39,7 @@ void *run(void *v_win) {
         XWindowAttributes xwa;
         if(XGetWindowAttributes(win->disp, win->win, &xwa)) {
             if (win->background) {
-                draw_rectangle(win, 0, 0, xwa.width, xwa.height, 1, win->background);
+                draw_rectangle(win,0,0,xwa.width,xwa.height,1,win->background);
             }
             if (win->redraw) {
                 (win->redraw)(win, xwa);
@@ -71,11 +69,12 @@ WINDOW XL_WindowCreate(
     
     /* set to allow transparency */
     XVisualInfo vinfo;
-    XMatchVisualInfo(res->disp, DefaultScreen(res->disp), 32, TrueColor, &vinfo);
+    XMatchVisualInfo(res->disp,DefaultScreen(res->disp),32,TrueColor,&vinfo);
     unlong window_flags =
         CWEventMask|CWColormap|CWBorderPixel|CWBackPixel;
     res->wa.colormap =
-        XCreateColormap(res->disp,DefaultRootWindow(res->disp),vinfo.visual,AllocNone);
+        XCreateColormap(res->disp,DefaultRootWindow(res->disp),
+                vinfo.visual,AllocNone);
     res->wa.border_pixel = 0;
     res->wa.background_pixel = 0;
     res->wa.override_redirect = True;
@@ -154,4 +153,63 @@ WINDOW XL_WindowCreate(
 
 void XL_WaitOnWindow(WINDOW win) {
     pthread_join(*win->thread, NULL);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+ELEMENT createSplit(unint v_h, unint f_d, float pos) {
+    SPLIT real = calloc(sizeof(struct _txf_split), 1);
+    real->id = 2; //TODO typedef for SPLIT
+
+    real->split_orient = v_h;
+    real->split_sizing = f_d;
+    real->split_value = pos;
+
+    real->top_or_left = NULL;
+    real->bot_or_right = NULL;
+    return (ELEMENT)real;
+}
+
+void XL_PanelSplitCreate(ELEMENT *ele, unint v_h, unint f_d, float pos) {
+    *ele = createSplit(v_h, f_d, pos);
+}
+
+
+void XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON), void(*click)(BUTTON)) {
+    BUTTON b = calloc(sizeof(struct _txf_button), 1);
+    b->id = 3; //TODO typedef for button
+    b->click = click;
+    b->init = init;
+
+    (*ele) = (ELEMENT)b;
+}
+
+ELEMENT *XL_PanelSplitLeft(ELEMENT ele) {
+    if (ele->id != 2) {
+        perror("called XL_PanelSplitLeft on a non split element");
+        exit(1);
+    }
+    return &(((SPLIT)ele)->top_or_left);
+}
+
+ELEMENT *XL_PanelSplitRight(ELEMENT ele) {
+    if (ele->id != 2) {
+        perror("called XL_PanelSplitLeft on a non split element");
+        exit(1);
+    }
+    return &(((SPLIT)ele)->bot_or_right);
+}
+
+ELEMENT *XL_WindowPanel(WINDOW win) {
+    return &(win->element);
 }

@@ -12,16 +12,42 @@
 #define unint unsigned int
 #define unlong unsigned long
 
-#define WINDOW _txf_window *
+#define WINDOW struct _txf_window *
+#define ELEMENT struct _txf_tree *
+#define BUTTON struct _txf_button *
+#define SPLIT struct _txf_split *
+
 #define PAINT(x) void (*x)(struct _txf_window*, XWindowAttributes xwa)
 #define EVENT(x) void (*x)(struct _txf_window*, XEvent xe)
 #define WINFN(x) void (*x)(struct _txf_window*)
+
 #define DOCK_WINDOW 0x80
 #define OMNIPRESENT 0x40
 #define FIXED_POSIT 0x20
 #define NORM_WINDOW 0x00
 
-typedef struct _txf_window{
+#define XL_VERTICAL 0x01
+#define XL_HORIZONTAL 0x02
+#define XL_FIXED 0x04
+#define XL_DYNAMIC 0x08
+
+typedef struct _txf_split {
+    unint id;
+    unint split_orient;
+    unint split_sizing;
+    unint split_value;
+    struct _txf_tree *top_or_left;
+    struct _txf_tree *bot_or_right;
+} _txf_split;
+
+typedef struct _txf_button {
+    unint id;
+    char *text;
+    void (*init)(struct _txf_button *);
+    void (*click)(struct _txf_button *);
+} _txf_button;
+
+typedef struct _txf_window {
     Display *disp;
     Pixmap canvas;
     XSetWindowAttributes wa;
@@ -36,7 +62,18 @@ typedef struct _txf_window{
     unint W;
     unint H;
     unlong background;
+    ELEMENT element;
 } _txf_window;
+
+typedef struct _txf_tree {
+    union {
+        struct {
+            unint id;
+        };
+        struct _txf_split split;
+        struct _txf_button button;
+    };
+} _txf_tree;
 
 WINDOW XL_WindowCreate(
         WINFN(init), PAINT(draw), EVENT(ev),
@@ -45,5 +82,12 @@ WINDOW XL_WindowCreate(
 void XL_WindowResize(WINDOW);
 void XL_WindowRedraw(WINDOW);
 void XL_WaitOnWindow(WINDOW);
+
+void XL_PanelSplitCreate(ELEMENT *, unint, unint, float);
+void XL_ButtonCreate(ELEMENT *, void(*)(BUTTON), void(*)(BUTTON));
+
+ELEMENT *XL_PanelSplitLeft(ELEMENT);
+ELEMENT *XL_PanelSplitRight(ELEMENT);
+ELEMENT *XL_WindowPanel(WINDOW);
 
 #endif
