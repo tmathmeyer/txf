@@ -31,15 +31,21 @@ int main() {
     WINDOW win = XL_WindowCreate(
             onCreate, 300, 300, 100, 100, NORM_WINDOW);
 
-    XL_PanelSplitCreate(XL_WindowPanel(win), XL_VERTICAL, XL_DYNAMIC, 50);
+    XL_PanelSplitCreate(XL_WindowPanel(win), XL_HORIZONTAL, XL_FIXED, -50);
+    ELEMENT spl =
+        XL_PanelSplitCreate(
+                XL_PanelSplitBottom(win->element),
+                XL_VERTICAL,
+                XL_FIXED,
+                50);
 
     XL_ButtonCreate(
-        XL_PanelSplitLeft(win->element),
+        XL_PanelSplitLeft(spl),
         record_colors,
         record_onclick);
 
     XL_ButtonCreate(
-        XL_PanelSplitRight(win->element),
+        XL_PanelSplitRight(spl),
         settings_colors,
         settings_onclick);
     

@@ -173,18 +173,18 @@ ELEMENT createSplit(unint v_h, unint f_d, float pos) {
     return (ELEMENT)real;
 }
 
-void XL_PanelSplitCreate(ELEMENT *ele, unint v_h, unint f_d, float pos) {
-    *ele = createSplit(v_h, f_d, pos);
+ELEMENT XL_PanelSplitCreate(ELEMENT *ele, unint v_h, unint f_d, float pos) {
+    return (*ele = createSplit(v_h, f_d, pos));
 }
 
 
-void XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON, GRAPHICS), void(*click)(BUTTON)) {
+ELEMENT XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON, GRAPHICS), void(*click)(BUTTON)) {
     BUTTON b = calloc(sizeof(struct _txf_button), 1);
     b->id = BUTTON_ID;
     b->click = click;
     b->init = init;
 
-    (*ele) = (ELEMENT)b;
+    return ((*ele) = (ELEMENT)b);
 }
 
 ELEMENT *XL_PanelSplitLeft(ELEMENT ele) {
@@ -268,8 +268,11 @@ void _txf_draw(ELEMENT e, GRAPHICS g) {
                     topheight = ((int)(g->height * s->split_value))/100;
                 }
                 if (s->split_sizing == XL_FIXED) {
-                    topheight = s->split_value>0 ? s->split_value
-                                                 : s->split_value + g->height;
+                    if (s->split_value > 0) {
+                        topheight = s->split_value;
+                    } else {
+                        topheight = s->split_value + g->height;
+                    }
                 }
                 _txf_draw(*XL_PanelSplitTop(e), 
                         mkgraphics(

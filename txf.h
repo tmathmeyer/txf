@@ -66,7 +66,7 @@ typedef struct _txf_split {
     unint id;
     unint split_orient;
     unint split_sizing;
-    unint split_value;
+    float split_value;
     ELEMENT top_or_left;
     ELEMENT bot_or_right;
 } _txf_split;
@@ -96,10 +96,12 @@ void XL_WindowResize(WINDOW);
 void XL_WindowRedraw(WINDOW);
 void XL_WaitOnWindow(WINDOW);
 
-void XL_PanelSplitCreate(ELEMENT *, unint, unint, float);
-void XL_ButtonCreate(ELEMENT *, void(*)(BUTTON, GRAPHICS), void(*)(BUTTON));
+ELEMENT XL_PanelSplitCreate(ELEMENT *, unint, unint, float);
+ELEMENT XL_ButtonCreate(ELEMENT *, void(*)(BUTTON, GRAPHICS), void(*)(BUTTON));
 
+ELEMENT *XL_PanelSplitTop(ELEMENT);
 ELEMENT *XL_PanelSplitLeft(ELEMENT);
+ELEMENT *XL_PanelSplitBottom(ELEMENT);
 ELEMENT *XL_PanelSplitRight(ELEMENT);
 ELEMENT *XL_WindowPanel(WINDOW);
 
