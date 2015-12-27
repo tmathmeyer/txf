@@ -26,7 +26,7 @@ char unhex(uint8_t x) {
     return -1;
 }
 
-unsigned long color_in_range(WINDOW win, char *clow, char *chigh, int percent) {
+unsigned long color_in_range(GRAPHICS g, char *clow, char *chigh, int percent) {
     int a_s = strlen(clow);
     int b_s = strlen(chigh);
     if (a_s != 7 || b_s != 7) {
@@ -54,13 +54,13 @@ unsigned long color_in_range(WINDOW win, char *clow, char *chigh, int percent) {
     res[5] = unhex(n_blu/16);
     res[6] = unhex(n_blu%16);
 
-    unsigned long result = getcolor(win, res);
+    unsigned long result = getcolor(g, res);
     return result;
 }
 
-unsigned long _getcolor(WINDOW win, const char *colstr) {
+unsigned long _getcolor(GRAPHICS g, const char *colstr) {
     XColor color;
-    if(!XAllocNamedColor(win->disp, win->wa.colormap, colstr, &color, &color)) {
+    if(!XAllocNamedColor(g->disp, g->map, colstr, &color, &color)) {
         return 0;
     }
     return color.pixel;
@@ -72,7 +72,7 @@ unsigned long alphaset(ulng color, uint8_t alpha) {
     return (0x00ffffff & color) | mod;
 }
 
-unsigned long getcolor(WINDOW win, const char *colstr) {
+unsigned long getcolor(GRAPHICS g, const char *colstr) {
     char *rgbcs = strdup(colstr);
     char *freeme = rgbcs;
     uint8_t value;
@@ -80,7 +80,7 @@ unsigned long getcolor(WINDOW win, const char *colstr) {
         case 4: // #rgb
         case 7: // #rrggbb
             free(freeme);
-            return _getcolor(win, colstr);
+            return _getcolor(g, colstr);
         case 9: // #aarrggbb
             value = 16*hex(colstr[1]) + hex(colstr[2]);
             rgbcs += 2;
@@ -91,22 +91,24 @@ unsigned long getcolor(WINDOW win, const char *colstr) {
             break;
     }
     rgbcs[0] = '#';
-    ulng result = _getcolor(win, rgbcs);
+    ulng result = _getcolor(g, rgbcs);
     result = alphaset(result, value);
     free(freeme);
     return result;
 }
 
 
-void draw_rectangle(WINDOW win, XYWH, char fill, ulng color) {
-    XSetForeground(win->disp, win->gc, color);
+void draw_rectangle(GRAPHICS g, XYWH, char fill, ulng color) {
+    XSetForeground(g->disp, g->gc, color);
     (fill?XFillRectangle:XDrawRectangle)(
-            win->disp
-            ,win->win
-            ,win->gc
-            ,X, Y, W, H);
+            g->disp,
+            g->canvas,
+            g->gc,
+            X+g->offsetX, Y+g->offsetY, W, H);
 }
 
 void XL_WindowBackground(WINDOW win, char *color) {
-    win->background = getcolor(win, color);
+    GRAPHICS g = defaultGraphics(win);
+    win->background = getcolor(g, color);
+    free(g);
 }

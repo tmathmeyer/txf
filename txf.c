@@ -33,17 +33,12 @@ void *run(void *v_win) {
     }
     while(1){
         pthread_mutex_lock(&win->lock);
-        if (win->event) {
-            (win->event)(win, xe);
-        }
-        XWindowAttributes xwa;
-        if(XGetWindowAttributes(win->disp, win->win, &xwa)) {
+        GRAPHICS g = defaultGraphics(win);
+        if(g) {
             if (win->background) {
-                draw_rectangle(win,0,0,xwa.width,xwa.height,1,win->background);
+                draw_rectangle(g,0,0,g->width,g->height,1,win->background);
             }
-            if (win->redraw) {
-                (win->redraw)(win, xwa);
-            }
+            _txf_draw(win->element, g);
         }
         XNextEvent(win->disp, &xe);
         pthread_mutex_unlock(&win->lock);
@@ -52,14 +47,12 @@ void *run(void *v_win) {
 }
 
 WINDOW XL_WindowCreate(
-        WINFN(init), PAINT(draw), EVENT(ev),
+        WINFN(init),
         unint X, unint Y, unint W, unint H,
         unlong flags) {
     WINDOW res = calloc(sizeof(_txf_window), 1);
     res->W = W;
     res->H = H;
-    res->redraw = draw;
-    res->event = ev;
     res->init = init;
 
     /* create display and get root window */
@@ -169,7 +162,7 @@ void XL_WaitOnWindow(WINDOW win) {
 
 ELEMENT createSplit(unint v_h, unint f_d, float pos) {
     SPLIT real = calloc(sizeof(struct _txf_split), 1);
-    real->id = 2; //TODO typedef for SPLIT
+    real->id = SPLIT_ID;
 
     real->split_orient = v_h;
     real->split_sizing = f_d;
@@ -185,9 +178,9 @@ void XL_PanelSplitCreate(ELEMENT *ele, unint v_h, unint f_d, float pos) {
 }
 
 
-void XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON), void(*click)(BUTTON)) {
+void XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON, GRAPHICS), void(*click)(BUTTON)) {
     BUTTON b = calloc(sizeof(struct _txf_button), 1);
-    b->id = 3; //TODO typedef for button
+    b->id = BUTTON_ID;
     b->click = click;
     b->init = init;
 
@@ -195,16 +188,48 @@ void XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON), void(*click)(BUTTON)) {
 }
 
 ELEMENT *XL_PanelSplitLeft(ELEMENT ele) {
-    if (ele->id != 2) {
+    if (ele->id != SPLIT_ID) {
         perror("called XL_PanelSplitLeft on a non split element");
+        exit(1);
+    }
+    if (((SPLIT)ele)->split_orient != XL_VERTICAL) {
+        perror("split is horizontal, cannot get left side");
         exit(1);
     }
     return &(((SPLIT)ele)->top_or_left);
 }
 
 ELEMENT *XL_PanelSplitRight(ELEMENT ele) {
-    if (ele->id != 2) {
-        perror("called XL_PanelSplitLeft on a non split element");
+    if (ele->id != SPLIT_ID) {
+        perror("called XL_PanelSplitRight on a non split element");
+        exit(1);
+    }
+    if (((SPLIT)ele)->split_orient != XL_VERTICAL) {
+        perror("split is horizontal, cannot get right side");
+        exit(1);
+    }
+    return &(((SPLIT)ele)->bot_or_right);
+}
+
+ELEMENT *XL_PanelSplitTop(ELEMENT ele) {
+    if (ele->id != SPLIT_ID) {
+        perror("called XL_PanelSplitTop on a non split element");
+        exit(1);
+    }
+    if (((SPLIT)ele)->split_orient != XL_HORIZONTAL) {
+        perror("split is vertical, cannot get top");
+        exit(1);
+    }
+    return &(((SPLIT)ele)->top_or_left);
+}
+
+ELEMENT *XL_PanelSplitBottom(ELEMENT ele) {
+    if (ele->id != SPLIT_ID) {
+        perror("called XL_PanelSplitBot on a non split element");
+        exit(1);
+    }
+    if (((SPLIT)ele)->split_orient != XL_HORIZONTAL) {
+        perror("split is vertical, cannot get bot");
         exit(1);
     }
     return &(((SPLIT)ele)->bot_or_right);
@@ -213,3 +238,104 @@ ELEMENT *XL_PanelSplitRight(ELEMENT ele) {
 ELEMENT *XL_WindowPanel(WINDOW win) {
     return &(win->element);
 }
+
+
+
+GRAPHICS mkgraphics(GRAPHICS g, unint x, unint y, unint w, unint h) {
+    GRAPHICS res = calloc(sizeof(struct _txf_grctx), 1);
+    res->offsetX = x;
+    res->offsetY = y;
+    res->width = w;
+    res->height = h;
+    res->canvas = g->canvas;
+    res->disp = g->disp;
+    res->gc = g->gc;
+    res->map = g->map;
+    return res;
+}
+
+void _txf_draw(ELEMENT e, GRAPHICS g) {
+    if (e == NULL) {
+        return;
+    }
+    switch(e->id) {
+        case SPLIT_ID:
+            (void)"Recursively call draw on the left and right halves";
+            SPLIT s = (SPLIT)e;
+            if (s->split_orient == XL_HORIZONTAL) {
+                int topheight;
+                if (s->split_sizing == XL_DYNAMIC) {
+                    topheight = ((int)(g->height * s->split_value))/100;
+                }
+                if (s->split_sizing == XL_FIXED) {
+                    topheight = s->split_value>0 ? s->split_value
+                                                 : s->split_value + g->height;
+                }
+                _txf_draw(*XL_PanelSplitTop(e), 
+                        mkgraphics(
+                            g,
+                            g->offsetX,
+                            g->offsetY,
+                            g->width,
+                            topheight));
+                _txf_draw(*XL_PanelSplitBottom(e),
+                        mkgraphics(
+                            g,
+                            g->offsetX,
+                            g->offsetY+topheight,
+                            g->width,
+                            g->height-topheight));
+
+            }
+            if (s->split_orient == XL_VERTICAL) {
+                int leftwidth;
+                if (s->split_sizing == XL_DYNAMIC) {
+                    leftwidth = ((int)(g->width * s->split_value))/100;
+                }
+                if (s->split_sizing == XL_FIXED) {
+                    leftwidth = s->split_value>0 ? s->split_value
+                                                 : s->split_value + g->width;
+                }
+                _txf_draw(*XL_PanelSplitLeft(e), 
+                        mkgraphics(
+                            g,
+                            g->offsetX,
+                            g->offsetY,
+                            leftwidth,
+                            g->height));
+                _txf_draw(*XL_PanelSplitRight(e),
+                        mkgraphics(
+                            g,
+                            g->offsetX+leftwidth,
+                            g->offsetY,
+                            g->width-leftwidth,
+                            g->height));
+            }
+            break;
+        case BUTTON_ID:
+            (void)"draw a button";
+            BUTTON b = (BUTTON)e;
+            (b->init)(b, g);
+            draw_rectangle(g, 0, 0, g->width, g->height, 1, b->color);
+            break;
+    }
+    free(g);
+}
+
+GRAPHICS defaultGraphics(WINDOW win) {
+    XWindowAttributes xwa;
+    if(XGetWindowAttributes(win->disp, win->win, &xwa)) {
+        GRAPHICS res = calloc(sizeof(struct _txf_grctx), 1);
+        res->offsetX = 0;
+        res->offsetY = 0;
+        res->width = xwa.width;
+        res->height = xwa.height;
+        res->canvas = win->win;
+        res->disp = win->disp;
+        res->gc = win->gc;
+        res->map = win->wa.colormap;
+        return res;
+    }
+    return NULL;
+}
+

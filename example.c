@@ -6,18 +6,6 @@
 #include "txf.h"
 #include "txf_draw.h"
 
-void draw(WINDOW win, XWindowAttributes xwa) {
-    unlong colorR = getcolor(win, "#4000");
-    int x = xwa.width/2;
-    int y = xwa.height/2;
-    draw_rectangle(win, x/2, y/2, x, y, 1, colorR);
-}
-
-void event(WINDOW win, XEvent xe) {
-    (void) win;
-    (void) xe;
-}
-
 void onCreate(WINDOW win) {
     XL_WindowBackground(win, "#ccffcc");   
 }
@@ -26,8 +14,8 @@ void record_onclick() {
 
 }
 
-void record_colors() {
-
+void record_colors(BUTTON b, GRAPHICS g) {
+    b->color = getcolor(g, "#f00");
 }
 
 
@@ -35,16 +23,15 @@ void settings_onclick() {
 
 }
 
-void settings_colors() {
-
+void settings_colors(BUTTON b, GRAPHICS g) {
+    b->color = getcolor(g, "#0f0");
 }
 
 int main() {
     WINDOW win = XL_WindowCreate(
-            onCreate, draw, event,
-            300, 300, 100, 100, NORM_WINDOW);
+            onCreate, 300, 300, 100, 100, NORM_WINDOW);
 
-    XL_PanelSplitCreate(XL_WindowPanel(win), XL_VERTICAL, XL_FIXED, -50);
+    XL_PanelSplitCreate(XL_WindowPanel(win), XL_VERTICAL, XL_DYNAMIC, 50);
 
     XL_ButtonCreate(
         XL_PanelSplitLeft(win->element),

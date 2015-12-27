@@ -13,11 +13,11 @@
 
 uint8_t hex(char c);
 char unhex(uint8_t x);
-unsigned long color_in_range(WINDOW win, char *clow, char *chigh, int percent);
-unsigned long _getcolor(WINDOW win, const char *colstr);
-unsigned long alphaset(ulng color, uint8_t alpha);
-unsigned long getcolor(WINDOW win, const char *colstr);
-void draw_rectangle(WINDOW win, XYWH, char fill, ulng color);
+unsigned long color_in_range(GRAPHICS, char *, char *, int);
+unsigned long _getcolor(GRAPHICS, const char *);
+unsigned long alphaset(ulng, uint8_t);
+unsigned long getcolor(GRAPHICS, const char *);
+void draw_rectangle(GRAPHICS, XYWH, char, ulng);
 
-void XL_WindowBackground(WINDOW, char *);   
+void XL_WindowBackground(WINDOW, char *);
 #endif

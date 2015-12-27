@@ -16,6 +16,10 @@
 #define ELEMENT struct _txf_tree *
 #define BUTTON struct _txf_button *
 #define SPLIT struct _txf_split *
+#define GRAPHICS struct _txf_grctx *
+
+#define BUTTON_ID 2
+#define SPLIT_ID 1
 
 #define PAINT(x) void (*x)(struct _txf_window*, XWindowAttributes xwa)
 #define EVENT(x) void (*x)(struct _txf_window*, XEvent xe)
@@ -31,21 +35,16 @@
 #define XL_FIXED 0x04
 #define XL_DYNAMIC 0x08
 
-typedef struct _txf_split {
-    unint id;
-    unint split_orient;
-    unint split_sizing;
-    unint split_value;
-    struct _txf_tree *top_or_left;
-    struct _txf_tree *bot_or_right;
-} _txf_split;
-
-typedef struct _txf_button {
-    unint id;
-    char *text;
-    void (*init)(struct _txf_button *);
-    void (*click)(struct _txf_button *);
-} _txf_button;
+typedef struct _txf_grctx {
+    Window canvas;
+    Display *disp;
+    GC gc;
+    Colormap map;
+    unint offsetX;
+    unint offsetY;
+    unint width;
+    unint height;
+} _txf_grctx;
 
 typedef struct _txf_window {
     Display *disp;
@@ -56,14 +55,28 @@ typedef struct _txf_window {
     unint depth;
     pthread_mutex_t lock;
     pthread_t *thread;
-    PAINT(redraw);
     WINFN(init);
-    EVENT(event);
     unint W;
     unint H;
     unlong background;
     ELEMENT element;
 } _txf_window;
+
+typedef struct _txf_split {
+    unint id;
+    unint split_orient;
+    unint split_sizing;
+    unint split_value;
+    ELEMENT top_or_left;
+    ELEMENT bot_or_right;
+} _txf_split;
+
+typedef struct _txf_button {
+    unint id;
+    unlong color;
+    void (*init)(BUTTON, GRAPHICS);
+    void (*click)(BUTTON);
+} _txf_button;
 
 typedef struct _txf_tree {
     union {
@@ -76,7 +89,7 @@ typedef struct _txf_tree {
 } _txf_tree;
 
 WINDOW XL_WindowCreate(
-        WINFN(init), PAINT(draw), EVENT(ev),
+        WINFN(init),
         unint X, unint Y, unint W, unint H,
         unlong flags);
 void XL_WindowResize(WINDOW);
@@ -84,10 +97,14 @@ void XL_WindowRedraw(WINDOW);
 void XL_WaitOnWindow(WINDOW);
 
 void XL_PanelSplitCreate(ELEMENT *, unint, unint, float);
-void XL_ButtonCreate(ELEMENT *, void(*)(BUTTON), void(*)(BUTTON));
+void XL_ButtonCreate(ELEMENT *, void(*)(BUTTON, GRAPHICS), void(*)(BUTTON));
 
 ELEMENT *XL_PanelSplitLeft(ELEMENT);
 ELEMENT *XL_PanelSplitRight(ELEMENT);
 ELEMENT *XL_WindowPanel(WINDOW);
+
+void _txf_draw(ELEMENT e, GRAPHICS g);
+
+GRAPHICS defaultGraphics(WINDOW win);
 
 #endif
