@@ -2,6 +2,8 @@
 #include "txf_draw.h"
 #include <stdio.h>
 
+Atom wmDeleteMessage;
+
 void XL_WindowRedraw(WINDOW win) {
     XMoveResizeWindow(
             win->disp
@@ -27,23 +29,69 @@ void *run(void *v_win) {
     WINDOW win = (WINDOW)v_win;
     pthread_mutex_init(&win->lock, NULL);
     XEvent xe;
-    XNextEvent(win->disp, &xe);
+    XSelectInput(
+            win->disp,
+            win->win,
+            ButtonPressMask|ExposureMask|ButtonReleaseMask);
     if (win->init) {
         (win->init)(win);
     }
-    while(1){
+    unint running = 1;
+    while(running){
+        XNextEvent(win->disp, &xe);
         pthread_mutex_lock(&win->lock);
         GRAPHICS g = defaultGraphics(win);
         if(g) {
-            if (win->background) {
-                draw_rectangle(g,0,0,g->width,g->height,1,win->background);
+            switch(xe.type) {
+                case Expose:
+                    (void) "resizing / uncovering";
+                    _txf_draw(win->element, g);
+                    break;
+                case ButtonPress:
+                    (void) "button press";
+                    ELEMENT e = _txf_get_element(
+                                win->element,
+                                xe.xbutton.x,
+                                xe.xbutton.y,
+                                g->width,
+                                g->height);
+                    _txf_handle_click(e);
+                    _txf_draw(win->element, defaultGraphics(win));
+                    break;
+                case ButtonRelease:
+                    (void) "button press";
+                    e = _txf_get_element(
+                                win->element,
+                                xe.xbutton.x,
+                                xe.xbutton.y,
+                                g->width,
+                                g->height);
+                    _txf_handle_reset(e);
+                    _txf_draw(win->element, defaultGraphics(win));
+                    break;
+                case ClientMessage:
+                    if (xe.xclient.data.l[0] == (unsigned int)wmDeleteMessage) {
+                        running = 0;
+                    }
+                    break;
             }
-            _txf_draw(win->element, g);
         }
-        XNextEvent(win->disp, &xe);
         pthread_mutex_unlock(&win->lock);
     }
+    
     return NULL;
+}
+
+void XL_WindowForceRedraw(WINDOW win) {
+    pthread_mutex_lock(&win->lock);
+    GRAPHICS g = defaultGraphics(win);
+    if(g) {
+        if (win->background) {
+            draw_rectangle(g,0,0,g->width,g->height,1,win->background);
+        }
+        _txf_draw(win->element, g);
+    }
+    pthread_mutex_unlock(&win->lock);
 }
 
 WINDOW XL_WindowCreate(
@@ -135,6 +183,10 @@ WINDOW XL_WindowCreate(
                 ,1);
 
     }
+
+    wmDeleteMessage = XInternAtom(res->disp, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(res->disp, res->win, &wmDeleteMessage, 1);
+
     XSelectInput(res->disp, res->win, ExposureMask);
     
     res->thread = calloc(sizeof(pthread_t), 1);
@@ -177,12 +229,19 @@ ELEMENT XL_PanelSplitCreate(ELEMENT *ele, unint v_h, unint f_d, float pos) {
     return (*ele = createSplit(v_h, f_d, pos));
 }
 
+void _txf_button_colors(BUTTON b, GRAPHICS g) {
+    b->init = NULL;
+    b->normal_color = getcolor(g, "#aaa");
+    b->click_color = getcolor(g, "#bbb");
+    b->hover_color = getcolor(g, "#888");
+    b->color = b->normal_color;
+}
 
-ELEMENT XL_ButtonCreate(ELEMENT *ele, void(*init)(BUTTON, GRAPHICS), void(*click)(BUTTON)) {
+ELEMENT XL_ButtonCreate(ELEMENT *ele, void(*click)(BUTTON)) {
     BUTTON b = calloc(sizeof(struct _txf_button), 1);
     b->id = BUTTON_ID;
     b->click = click;
-    b->init = init;
+    b->init = _txf_button_colors;
 
     return ((*ele) = (ELEMENT)b);
 }
@@ -318,8 +377,11 @@ void _txf_draw(ELEMENT e, GRAPHICS g) {
         case BUTTON_ID:
             (void)"draw a button";
             BUTTON b = (BUTTON)e;
-            (b->init)(b, g);
+            if (b->init) {
+                (b->init)(b, g);
+            }
             draw_rectangle(g, 0, 0, g->width, g->height, 1, b->color);
+            draw_rectangle(g, 0, 0, g->width, g->height, 0, 0);
             break;
     }
     free(g);
@@ -340,5 +402,104 @@ GRAPHICS defaultGraphics(WINDOW win) {
         return res;
     }
     return NULL;
+}
+
+ELEMENT _txf_get_element(ELEMENT e, unint x, unint y, unint w, unint h) {
+    if (e == NULL) {
+        return NULL;
+    }
+    switch(e->id) {
+        case SPLIT_ID:
+            (void) "pick which half on a split";
+            SPLIT s = (SPLIT)e;
+            if (s->split_orient == XL_HORIZONTAL) {
+                unint topheight;
+                if (s->split_sizing == XL_DYNAMIC) {
+                    topheight = ((int)(h * s->split_value))/100;
+                }
+                if (s->split_sizing == XL_FIXED) {
+                    if (s->split_value > 0) {
+                        topheight = s->split_value;
+                    } else {
+                        topheight = s->split_value + h;
+                    }
+                }
+                if (y >= topheight) {
+                   return _txf_get_element(
+                            *XL_PanelSplitBottom(e),
+                            x, y-topheight, w, h-topheight);
+                } else {
+                   return _txf_get_element(
+                            *XL_PanelSplitTop(e),
+                            x, y, w, topheight);
+                }
+            }
+            if (s->split_orient == XL_VERTICAL) {
+                unint leftwidth;
+                if (s->split_sizing == XL_DYNAMIC) {
+                    leftwidth = ((int)(w * s->split_value))/100;
+                }
+                if (s->split_sizing == XL_FIXED) {
+                    if (s->split_value > 0) {
+                        leftwidth = s->split_value;
+                    } else {
+                        leftwidth = s->split_value + w;
+                    }
+                }
+                if (x >= leftwidth) {
+                   return _txf_get_element(
+                            *XL_PanelSplitRight(e),
+                            x-leftwidth, y, w-leftwidth, h);
+                } else {
+                   return _txf_get_element(
+                            *XL_PanelSplitLeft(e),
+                            x, y, leftwidth, h);
+                }
+            }
+            break;
+        case BUTTON_ID:
+            return e;
+    }
+    return NULL;
+}
+
+void _txf_handle_click(ELEMENT e) {
+    if (e == NULL) {
+        return;
+    }
+    switch(e->id) {
+        case BUTTON_ID:
+            (void) "click on a button";
+            BUTTON b = (BUTTON)e;
+            b->color = b->click_color;
+            (b->click)(b);
+            break;
+    }
+}
+
+void _txf_handle_hover(ELEMENT e) {
+    if (e == NULL) {
+        return;
+    }
+    switch(e->id) {
+        case BUTTON_ID:
+            (void) "mouseover on a button";
+            BUTTON b = (BUTTON)e;
+            b->color = b->hover_color;
+            break;
+    }
+}
+
+void _txf_handle_reset(ELEMENT e) {
+    if (e == NULL) {
+        return;
+    }
+    switch(e->id) {
+        case BUTTON_ID:
+            (void) "reset a button";
+            BUTTON b = (BUTTON)e;
+            b->color = b->normal_color;
+            break;
+    }
 }
 

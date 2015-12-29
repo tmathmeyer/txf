@@ -35,6 +35,10 @@
 #define XL_FIXED 0x04
 #define XL_DYNAMIC 0x08
 
+#define bool unsigned char
+#define TRUE 1
+#define FALSE 0
+
 typedef struct _txf_grctx {
     Window canvas;
     Display *disp;
@@ -74,6 +78,9 @@ typedef struct _txf_split {
 typedef struct _txf_button {
     unint id;
     unlong color;
+    unlong normal_color;
+    unlong click_color;
+    unlong hover_color;
     void (*init)(BUTTON, GRAPHICS);
     void (*click)(BUTTON);
 } _txf_button;
@@ -95,9 +102,10 @@ WINDOW XL_WindowCreate(
 void XL_WindowResize(WINDOW);
 void XL_WindowRedraw(WINDOW);
 void XL_WaitOnWindow(WINDOW);
+void XL_WindowForceRedraw(WINDOW);
 
 ELEMENT XL_PanelSplitCreate(ELEMENT *, unint, unint, float);
-ELEMENT XL_ButtonCreate(ELEMENT *, void(*)(BUTTON, GRAPHICS), void(*)(BUTTON));
+ELEMENT XL_ButtonCreate(ELEMENT *, void(*)(BUTTON));
 
 ELEMENT *XL_PanelSplitTop(ELEMENT);
 ELEMENT *XL_PanelSplitLeft(ELEMENT);
@@ -105,7 +113,11 @@ ELEMENT *XL_PanelSplitBottom(ELEMENT);
 ELEMENT *XL_PanelSplitRight(ELEMENT);
 ELEMENT *XL_WindowPanel(WINDOW);
 
-void _txf_draw(ELEMENT e, GRAPHICS g);
+void _txf_draw(ELEMENT, GRAPHICS);
+void _txf_handle_click(ELEMENT);
+void _txf_handle_hover(ELEMENT);
+void _txf_handle_reset(ELEMENT);
+ELEMENT _txf_get_element(ELEMENT, unint, unint, unint, unint);
 
 GRAPHICS defaultGraphics(WINDOW win);
 

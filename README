@@ -1,0 +1,3 @@
+This is a program selects an area on the screen and records it.
+it can't capture itself (hotkey collision) so I will use ffmpeg
+to capture this working.

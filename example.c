@@ -6,31 +6,18 @@
 #include "txf.h"
 #include "txf_draw.h"
 
+
+void record_onclick(BUTTON b) {
+    (void)b;
+    puts("record");
+}
+
+void settings_onclick(BUTTON b) {
+    (void)b;
+    puts("settings");
+}
+
 void onCreate(WINDOW win) {
-    XL_WindowBackground(win, "#ccffcc");   
-}
-
-void record_onclick() {
-
-}
-
-void record_colors(BUTTON b, GRAPHICS g) {
-    b->color = getcolor(g, "#f00");
-}
-
-
-void settings_onclick() {
-
-}
-
-void settings_colors(BUTTON b, GRAPHICS g) {
-    b->color = getcolor(g, "#0f0");
-}
-
-int main() {
-    WINDOW win = XL_WindowCreate(
-            onCreate, 300, 300, 100, 100, NORM_WINDOW);
-
     XL_PanelSplitCreate(XL_WindowPanel(win), XL_HORIZONTAL, XL_FIXED, -50);
     ELEMENT spl =
         XL_PanelSplitCreate(
@@ -41,13 +28,18 @@ int main() {
 
     XL_ButtonCreate(
         XL_PanelSplitLeft(spl),
-        record_colors,
         record_onclick);
 
     XL_ButtonCreate(
         XL_PanelSplitRight(spl),
-        settings_colors,
         settings_onclick);
-    
+ 
+    XL_WindowForceRedraw(win);
+}
+
+int main() {
+    WINDOW win = XL_WindowCreate(
+            onCreate, 300, 300, 100, 100, NORM_WINDOW);
+
     XL_WaitOnWindow(win);
 }

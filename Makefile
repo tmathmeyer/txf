@@ -2,20 +2,20 @@
 
 include config.mk
 
-all: txf_example
+all: example
 
-txf_example: txf.o txf_draw.o example.o
+example: txf.o txf_draw.o example.o
 
 .c.o: config.mk
 	@echo CC -c $<
 	@${CC} -c $< ${CFLAGS}
 
-txf_example txf_example_path:
+example txf_example_path:
 	@echo CC -o $@
 	@${CC} -o $@ $+ ${LDFLAGS}
 
 clean:
 	@echo cleaning
-	@rm -f txf_example *.o
+	@rm -f example *.o
 
-update: clean txf_example
+update: clean example
